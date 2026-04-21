@@ -1,6 +1,8 @@
 import os
 import time
 import smtplib
+import imaplib
+import email
 import json
 import threading
 import datetime
@@ -24,19 +26,44 @@ TEST_RECIPIENT = os.getenv("TEST_RECIPIENT", "")
 SMTP_ACCOUNTS_RAW = os.getenv("SMTP_ACCOUNTS", "")
 REPORT_DIRECTORY = os.getenv("REPORT_DIRECTORY", ".")
 
+# Cadenas de texto predefinidas para detectar fallos de entrega (Bounces) - Bilingüe
+BOUNCE_KEYWORDS = [
+    # English
+    "Address not found",
+    "The email account that you tried to reach does not exist",
+    "Delivery Status Notification (Failure)",
+    "Recipient address rejected",
+    "Mail delivery failed",
+    "mailbox unavailable",
+    "permanent failure",
+    "undeliverable",
+    # Español
+    "Dirección no encontrada",
+    "La cuenta de correo electrónico a la que intentaste llegar no existe",
+    "Notificación de estado de entrega (error)",
+    "Dirección del destinatario rechazada",
+    "Fallo en la entrega del correo",
+    "Buzón no disponible",
+    "Fallo permanente",
+    "No se pudo entregar",
+    "El mensaje no se pudo entregar",
+    "Cuenta de correo no válida"
+]
+
 # Procesar cuentas SMTP
 SMTP_ACCOUNTS = []
 if SMTP_ACCOUNTS_RAW:
     for acc in SMTP_ACCOUNTS_RAW.split(","):
         if "|" in acc:
-            email, password = acc.split("|")
-            SMTP_ACCOUNTS.append({"email": email, "password": password})
+            email_addr, password = acc.split("|")
+            SMTP_ACCOUNTS.append({"email": email_addr, "password": password})
 
 # Estado global de la campaña
 stats = {
     "enviadas": 0,
     "entregados": 0,
     "errores": 0,
+    "rebotes": 0,
     "total_contactos": 0,
     "estado": "Iniciando",
     "inicio_campana": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -74,6 +101,49 @@ def send_email(account, recipient, subject, body, attachment_path=None):
         print(f"Error enviando desde {account['email']} a {recipient}: {e}")
         return False
 
+def scan_bounces(account):
+    """Escanea la bandeja de entrada buscando notificaciones de error vía IMAP."""
+    global stats
+    try:
+        print(f"[{account['email']}] Conectando a IMAP...")
+        mail = imaplib.IMAP4_SSL("imap.gmail.com")
+        mail.login(account['email'], account['password'])
+        mail.select("inbox")
+
+        # Buscar correos de hoy (MAILER-DAEMON)
+        date = datetime.date.today().strftime("%d-%b-%Y")
+        print(f"[{account['email']}] Buscando notificaciones de error desde {date}...")
+        _, search_data = mail.search(None, f'(SINCE "{date}")')
+
+        found_bounces = 0
+        message_nums = search_data[0].split()
+        print(f"[{account['email']}] Analizando {len(message_nums)} correos recibidos hoy...")
+
+        for num in message_nums:
+            _, data = mail.fetch(num, "(RFC822)")
+            raw_email = data[0][1]
+            msg = email.message_from_bytes(raw_email)
+            
+            body = ""
+            if msg.is_multipart():
+                for part in msg.walk():
+                    if part.get_content_type() == "text/plain":
+                        body = part.get_payload(decode=True).decode(errors='ignore')
+                        break
+            else:
+                body = msg.get_payload(decode=True).decode(errors='ignore')
+
+            if any(keyword.lower() in body.lower() for keyword in BOUNCE_KEYWORDS):
+                found_bounces += 1
+        
+        with stats_lock:
+            stats["rebotes"] += found_bounces
+        
+        mail.logout()
+        print(f"[{account['email']}] Escaneo completado. Rebotes detectados: {found_bounces}")
+    except Exception as e:
+        print(f"Error escaneando rebotes en {account['email']}: {e}")
+
 def generate_pdf_report():
     if not os.path.exists(REPORT_DIRECTORY):
         os.makedirs(REPORT_DIRECTORY)
@@ -94,7 +164,8 @@ def generate_pdf_report():
     pdf.cell(200, 10, txt=f"Total Contactos: {stats['total_contactos']}", ln=True)
     pdf.cell(200, 10, txt=f"Enviados: {stats['enviadas']}", ln=True)
     pdf.cell(200, 10, txt=f"Entregados: {stats['entregados']}", ln=True)
-    pdf.cell(200, 10, txt=f"Errores: {stats['errores']}", ln=True)
+    pdf.cell(200, 10, txt=f"Rebotes (Bounce): {stats['rebotes']}", ln=True)
+    pdf.cell(200, 10, txt=f"Errores SMTP: {stats['errores']}", ln=True)
     
     filename = f"reporte_{CAMPAIGN_ID}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
     filepath = os.path.join(REPORT_DIRECTORY, filename)
@@ -116,8 +187,10 @@ def send_report(final=False):
                 "id_campana": CAMPAIGN_ID,
                 "estado_campana": stats["estado"],
                 "asunto": SUBJECT,
-                "enviadas": str(stats["enviadas"]),
-                "entregados": str(stats["entregados"]),
+                "enviadas": stats["enviadas"],
+                "entregados": stats["entregados"],
+                "rebotes": stats["rebotes"],
+                "errores_smtp": stats["errores"]
             },
             "audiencia": {
                 "listas_incluidas": CONTACT_LIST_PATH
@@ -127,27 +200,35 @@ def send_report(final=False):
     report_json = json.dumps(report_data, indent=4)
     print(f"\n--- REPORTE {'FINAL' if final else 'PERIODICO'} ---\n{report_json}\n")
     
-    # Cuerpo del email formateado para humanos
     report_body = f"""
 ==========================================
    REPORTE DE CAMPAÑA - {CAMPAIGN_ID}
 ==========================================
-Estado: {stats['estado']}
-Asunto: {SUBJECT}
+
+ESTADO DE LA CAMPAÑA: {stats['estado']}
+ASUNTO: {SUBJECT}
+
 ------------------------------------------
 DETALLES DE ENVÍO:
-- Total Contactos: {stats['total_contactos']}
-- Enviados: {stats['enviadas']}
-- Entregados: {stats['entregados']}
-- Errores: {stats['errores']}
 ------------------------------------------
-TIEMPOS:
-- Inicio: {stats['inicio_campana']}
-- Fin: {stats['fin_campana']}
-- Reporte: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+TOTAL CONTACTOS  : {stats['total_contactos']}
+EMAILS ENVIADOS  : {stats['enviadas']}
+EMAILS ENTREGADOS: {stats['entregados']}
+REBOTES (BOUNCE) : {stats['rebotes']}
+ERRORES SMTP     : {stats['errores']}
+
+------------------------------------------
+CRONOLOGÍA:
+------------------------------------------
+INICIO: {stats['inicio_campana']}
+FIN   : {stats['fin_campana']}
+REPORTE GENERADO: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
+
 ------------------------------------------
 AUDIENCIA:
-- Lista: {CONTACT_LIST_PATH}
+------------------------------------------
+LISTA UTILIZADA: {CONTACT_LIST_PATH}
+
 ==========================================
 """
 
@@ -239,6 +320,10 @@ for i in range(num_accounts):
 
 for t in threads:
     t.join()
+
+print("\nEscaneando bandejas de entrada para detectar rebotes...")
+for acc in SMTP_ACCOUNTS:
+    scan_bounces(acc)
 
 send_report(final=True)
 print("Campaña finalizada.")
