@@ -1,0 +1,12 @@
+# Credenciales y configuración
+.env
+
+# Instrucciones y Feedback
+prompt.md
+feedback.md
+PROMPT.MD
+FEEDBACK.MD
+
+# Datos de campañas y contactos
+campaigns/contacts/
+campaigns/e-mail/*/
