@@ -1,54 +1,62 @@
 # 🚀 E-mail Marketing Automation Suite (V3)
 
-Sistema avanzado de automatización para e-mail marketing diseñado para maximizar la entregabilidad mediante el uso de múltiples cuentas SMTP de Gmail en paralelo y estrategias inteligentes de warm-up.
+A high-performance, multi-threaded email marketing automation engine designed to maximize deliverability and protect sender reputation through intelligent SMTP rotation and dynamic warm-up strategies.
 
-## 🌟 Novedades en V3
-- **📊 Generación de Reportes PDF**: Al finalizar cada campaña, se genera automáticamente un reporte visual profesional.
-- **📧 Reportes Legibles**: Notificaciones de estado vía email formateadas para lectura humana.
-- **🖥️ VPS Gateway**: Script puente para despliegue y gestión remota en servidores Hostinger/Linux.
-- **📂 Gestión de Archivos**: Carpeta de reportes personalizable mediante variables de entorno.
+## 🌟 Key Features (V3)
+- **📊 Professional PDF Reporting**: Automatic generation of comprehensive campaign reports using FPDF.
+- **📧 Real-time Email Notifications**: Periodic and final status updates sent directly to the administrator, formatted for human readability.
+- **🖥️ VPS Gateway Integration**: Includes `vps_gateway.ps1` for seamless deployment to remote Linux servers (Hostinger/VPS) via PowerShell.
+- **⚙️ Dynamic Warm-up Engine**: Smart delay cycles (1-10 min) to mimic human behavior and avoid spam filters.
+- **🧵 Multi-threaded Execution**: Parallel processing across multiple SMTP accounts for high-volume efficiency.
+- **🧪 Mandatory Test Phase**: Automated pre-flight check to verify SMTP health before starting mass distribution.
 
-## ✨ Características Principales
-- **📦 Multi-threading**: Distribución inteligente de contactos entre múltiples cuentas SMTP.
-- **📈 Ciclo de Warm-up Dinámico**: Estrategia de retrasos de 1 a 10 minutos para proteger la reputación del remitente.
-- **🧪 Fase de Pruebas**: Validación obligatoria con envío de prueba antes de la distribución masiva.
-- **⏱️ Tracking de Tiempos**: Registro preciso del inicio y fin de cada campaña.
+## 🛠️ Tech Stack
+- **Language**: Python 3.12+
+- **Core Modules**: `smtplib`, `threading`, `python-dotenv`
+- **Reporting**: `fpdf` for PDF generation.
+- **Infrastructure**: PowerShell for deployment and gateway management.
 
-## 🛠️ Requisitos Técnicos
-- Python 3.12+
-- Dependencias: `python-dotenv`, `fpdf`
-- Cuentas de Gmail con "App Passwords" habilitadas.
+## 🚀 Getting Started
 
-## 🚀 Instalación y Despliegue
-
-### Local
-1. Instala dependencias:
+### Local Setup
+1. **Install Dependencies**:
    ```powershell
    pip install python-dotenv fpdf
    ```
-2. Configura tu `.env` (usa `.env-example` como base).
-3. Ejecuta:
+2. **Configure Environment**:
+   Clone `.env-example` to `.env` and populate your SMTP credentials and campaign settings.
+3. **Run Campaign**:
    ```powershell
    python e-mail_marketing.py
    ```
 
-### VPS (Hostinger)
-Utiliza el gateway de PowerShell incluido para automatizar el despliegue:
+### VPS Deployment (Hostinger/Linux)
+Deploy your campaign to a remote server with a single command:
 ```powershell
 ./vps_gateway.ps1
 ```
-Este script permite:
-- Instalar Python y dependencias en el VPS.
-- Transferir archivos locales al servidor.
-- Ejecutar la campaña en segundo plano usando `screen`.
+The gateway automates:
+- Python environment provisioning.
+- Secure file transfer (SCP).
+- Background execution using `screen` for persistence.
 
-## ⚙️ Configuración (.env)
-| Variable | Descripción |
+## ⚙️ Configuration (.env)
+
+| Variable | Description |
 | :--- | :--- |
-| `CAMPAIGN_ID` | ID único de la campaña (ej: CMP-21042026). |
-| `REPORT_DIRECTORY` | Carpeta donde se guardarán los PDFs generados. |
-| `SMTP_ACCOUNTS` | Cuentas SMTP en formato `email|password,email|password`. |
-| `TEST_RECIPIENT` | Email que recibe pruebas y reportes finales. |
+| `CAMPAIGN_ID` | Unique identifier for the campaign (e.g., CMP-21042026). |
+| `SMTP_ACCOUNTS` | Comma-separated list of accounts in `email|app_password` format. |
+| `REPORT_DIRECTORY` | Target folder for PDF and JSON report artifacts. |
+| `CONTACT_LIST` | Path to the UTF-8 encoded plain text list of recipients. |
+| `MESSAGE` | Path to the Markdown or Text file containing the body. |
 
-## 🤝 Contacto
-Desarrollado por **Esteban Selvaggi** - [selvaggiesteban.dev](https://selvaggiesteban.dev/)
+## 🛡️ Best Practices & Security
+- **App Passwords**: Always use Google App Passwords instead of master passwords.
+- **Rate Limiting**: The built-in 1-10 min variable delay is optimized for Gmail's SMTP limits.
+- **Encoding**: Ensure `emails.txt` and `message.md` are saved in **UTF-8** (without BOM) to prevent decoding errors.
+
+## 📄 License
+This project is for private professional use. All rights reserved.
+
+---
+*Developed by Esteban Selvaggi | [selvaggiesteban.dev](https://selvaggiesteban.dev/)*
