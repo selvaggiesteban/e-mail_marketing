@@ -1,8 +1,4 @@
-# 🚀 E-mail Marketing Automation Engine (V2)
-
-[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![VPS Ready](https://img.shields.io/badge/Deployment-VPS%20Hostinger-orange.svg)](https://hpanel.hostinger.com/)
+# 🚀 E-mail Marketing Automation Engine
 
 **The ultimate high-performance engine for precision email marketing.** This suite is engineered to bypass common deliverability hurdles using multi-account orchestration, human-mimicking behavior, and automated bounce management.
 
