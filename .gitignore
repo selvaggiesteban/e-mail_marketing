@@ -8,8 +8,6 @@ PROMPT.MD
 FEEDBACK.MD
 
 # Datos de campañas y contactos
-campaigns/contacts/
-campaigns/e-mail/*/
-
+campaigns/
 DATOS.MD
 datos.md

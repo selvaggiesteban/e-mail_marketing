@@ -14,6 +14,8 @@ from email import encoders
 from dotenv import load_dotenv
 from fpdf import FPDF
 
+import logging
+
 # Cargar variables de entorno
 load_dotenv()
 
@@ -25,6 +27,23 @@ MESSAGE_PATH = os.getenv("MESSAGE", "message.md")
 TEST_RECIPIENT = os.getenv("TEST_RECIPIENT", "")
 SMTP_ACCOUNTS_RAW = os.getenv("SMTP_ACCOUNTS", "")
 REPORT_DIRECTORY = os.getenv("REPORT_DIRECTORY", ".")
+
+# Configuración de Logging
+if not os.path.exists(REPORT_DIRECTORY):
+    os.makedirs(REPORT_DIRECTORY)
+
+log_filename = f"log_{CAMPAIGN_ID}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+log_path = os.path.join(REPORT_DIRECTORY, log_filename)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler(log_path, encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 # Cadenas de texto predefinidas para detectar fallos de entrega (Bounces) - Bilingüe
 BOUNCE_KEYWORDS = [
@@ -98,26 +117,26 @@ def send_email(account, recipient, subject, body, attachment_path=None):
             server.send_message(msg)
         return True
     except Exception as e:
-        print(f"Error enviando desde {account['email']} a {recipient}: {e}")
+        logger.error(f"Error enviando desde {account['email']} a {recipient}: {e}")
         return False
 
 def scan_bounces(account):
     """Escanea la bandeja de entrada buscando notificaciones de error vía IMAP."""
     global stats
     try:
-        print(f"[{account['email']}] Conectando a IMAP...")
+        logger.info(f"[{account['email']}] Conectando a IMAP...")
         mail = imaplib.IMAP4_SSL("imap.gmail.com")
         mail.login(account['email'], account['password'])
         mail.select("inbox")
 
         # Buscar correos de hoy (MAILER-DAEMON)
         date = datetime.date.today().strftime("%d-%b-%Y")
-        print(f"[{account['email']}] Buscando notificaciones de error desde {date}...")
+        logger.info(f"[{account['email']}] Buscando notificaciones de error desde {date}...")
         _, search_data = mail.search(None, f'(SINCE "{date}")')
 
         found_bounces = 0
         message_nums = search_data[0].split()
-        print(f"[{account['email']}] Analizando {len(message_nums)} correos recibidos hoy...")
+        logger.info(f"[{account['email']}] Analizando {len(message_nums)} correos recibidos hoy...")
 
         for num in message_nums:
             _, data = mail.fetch(num, "(RFC822)")
@@ -140,9 +159,9 @@ def scan_bounces(account):
             stats["rebotes"] += found_bounces
         
         mail.logout()
-        print(f"[{account['email']}] Escaneo completado. Rebotes detectados: {found_bounces}")
+        logger.info(f"[{account['email']}] Escaneo completado. Rebotes detectados: {found_bounces}")
     except Exception as e:
-        print(f"Error escaneando rebotes en {account['email']}: {e}")
+        logger.error(f"Error escaneando rebotes en {account['email']}: {e}")
 
 def generate_pdf_report():
     if not os.path.exists(REPORT_DIRECTORY):
@@ -198,7 +217,7 @@ def send_report(final=False):
         }
     
     report_json = json.dumps(report_data, indent=4)
-    print(f"\n--- REPORTE {'FINAL' if final else 'PERIODICO'} ---\n{report_json}\n")
+    logger.info(f"\n--- REPORTE {'FINAL' if final else 'PERIODICO'} ---\n{report_json}\n")
     
     report_body = f"""
 ==========================================
@@ -235,7 +254,7 @@ LISTA UTILIZADA: {CONTACT_LIST_PATH}
     pdf_path = None
     if final:
         pdf_path = generate_pdf_report()
-        print(f"Reporte PDF generado: {pdf_path}")
+        logger.info(f"Reporte PDF generado: {pdf_path}")
 
     report_acc = next((acc for acc in SMTP_ACCOUNTS if acc['email'] == TEST_RECIPIENT), SMTP_ACCOUNTS[0] if SMTP_ACCOUNTS else None)
     
@@ -270,10 +289,10 @@ def worker(account, contacts):
         
         if contact != contacts[-1]:
             delay = next(delay_gen)
-            print(f"[{account['email']}] [{status_msg}] {contact}. Esperando {delay} min...")
+            logger.info(f"[{account['email']}] [{status_msg}] {contact}. Esperando {delay} min...")
             time.sleep(delay * 60)
         else:
-            print(f"[{account['email']}] [{status_msg}] {contact}. Finalizado.")
+            logger.info(f"[{account['email']}] [{status_msg}] {contact}. Finalizado.")
 
 # Cargar mensaje y contactos
 try:
@@ -283,23 +302,23 @@ try:
         all_contacts = [line.strip() for line in f if line.strip()]
     stats["total_contactos"] = len(all_contacts)
 except Exception as e:
-    print(f"Error cargando archivos: {e}")
+    logger.error(f"Error cargando archivos: {e}")
     sys.exit(1)
 
 if not SMTP_ACCOUNTS:
-    print("No hay cuentas SMTP configuradas.")
+    logger.error("No hay cuentas SMTP configuradas.")
     sys.exit(1)
 
 # Fase de Prueba
-print("Iniciando fase de prueba...")
+logger.info("Iniciando fase de prueba...")
 for acc in SMTP_ACCOUNTS:
-    print(f"Enviando prueba desde {acc['email']}...")
+    logger.info(f"Enviando prueba desde {acc['email']}...")
     send_email(acc, TEST_RECIPIENT, f"[PRUEBA] {SUBJECT}", campaign_message)
 
-print("\nPruebas enviadas a", TEST_RECIPIENT)
+logger.info(f"Pruebas enviadas a {TEST_RECIPIENT}")
 confirm = input("¿Desea comenzar la distribución de la campaña? (s/n): ")
 if confirm.lower() != 's':
-    print("Campaña cancelada.")
+    logger.info("Campaña cancelada.")
     sys.exit(0)
 
 num_accounts = len(SMTP_ACCOUNTS)
@@ -307,7 +326,7 @@ chunk_size = (len(all_contacts) + num_accounts - 1) // num_accounts
 contact_chunks = [all_contacts[i:i + chunk_size] for i in range(0, len(all_contacts), chunk_size)]
 
 stats["estado"] = "En progreso"
-print(f"Iniciando campaña con {num_accounts} cuentas y {len(all_contacts)} contactos...")
+logger.info(f"Iniciando campaña con {num_accounts} cuentas y {len(all_contacts)} contactos...")
 
 threading.Thread(target=reporter_thread, daemon=True).start()
 
@@ -321,9 +340,9 @@ for i in range(num_accounts):
 for t in threads:
     t.join()
 
-print("\nEscaneando bandejas de entrada para detectar rebotes...")
+logger.info("Escaneando bandejas de entrada para detectar rebotes...")
 for acc in SMTP_ACCOUNTS:
     scan_bounces(acc)
 
 send_report(final=True)
-print("Campaña finalizada.")
+logger.info("Campaña finalizada.")

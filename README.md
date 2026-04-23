@@ -1,43 +1,71 @@
-# 🚀 E-mail Marketing Automation Suite
+# 🚀 E-mail Marketing Automation Engine (V2)
 
-The ultimate high-performance engine for precision email marketing. This suite is engineered to bypass common deliverability hurdles using multi-account orchestration, human-mimicking behavior, and automated bounce management.
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![VPS Ready](https://img.shields.io/badge/Deployment-VPS%20Hostinger-orange.svg)](https://hpanel.hostinger.com/)
 
-## 📌 Overview
-This automation suite allows businesses to scale their outreach by distributing campaigns across multiple Gmail accounts. It handles the complexities of SMTP rate limits, sender reputation, and real-time bounce tracking automatically.
+**The ultimate high-performance engine for precision email marketing.** This suite is engineered to bypass common deliverability hurdles using multi-account orchestration, human-mimicking behavior, and automated bounce management.
 
-## ⚡ Core Capabilities
-*   **Orchestrated Delivery**: Intelligent distribution of contacts across multiple SMTP accounts in parallel.
-*   **Reputation Shield**: Dynamic "warm-up" delay cycles (1 to 10 minutes) to keep your accounts under the radar of spam filters.
-*   **🔍 Automated Bounce Scanning**: Integrated IMAP engine that scans your inboxes for "MAILER-DAEMON" notifications to identify dead emails.
-*   **🌍 Bilingual Detection**: Supports permanent failure detection in both **English and Spanish** (e.g., "Address not found" / "Dirección no encontrada").
-*   **Hybrid Deployment**: Run locally for quick tasks or deploy to a VPS using the built-in PowerShell Gateway.
-*   **Smart Reporting**: Human-readable status updates via email and professional PDF generation for audits.
+---
 
-## 🛠 Project Architecture
-*   **Engine**: Python 3.12+ (Multi-threaded worker system).
-*   **Communication**: SMTP_SSL for sending and IMAP_SSL for bounce scanning.
-*   **Security**: Full `.env` integration and `.gitignore` protection for sensitive data.
+## 📌 Strategic Overview
+This automation suite allows businesses to scale their outreach by distributing campaigns across multiple SMTP accounts in parallel. It handles the complexities of SMTP rate limits, sender reputation, and real-time bounce tracking automatically, ensuring your message actually reaches the inbox.
 
-## 🚦 Getting Started
+## ⚡ Key Technical Features
+*   **Orchestrated Multi-Account Delivery**: Intelligent distribution of contacts across multiple SMTP providers to maximize throughput without triggering flags.
+*   **Anti-Spam reputation Shield**: Implements dynamic delay cycles (1 to 10-minute intervals) to mimic human behavior and preserve sender reputation.
+*   **🔍 AI-Powered Bounce Intelligence**: Integrated IMAP engine that scans all sender inboxes for `MAILER-DAEMON` notifications.
+    *   **Bilingual Detection**: Support for English & Spanish failure patterns (e.g., "Address not found" / "Dirección no encontrada").
+*   **Seamless VPS Gateway**: Built-in PowerShell automation for one-click deployment to Hostinger VPS environments.
+*   **Professional Audit Reports**: Automatic generation of human-readable PDF reports and detailed execution logs for every campaign.
 
-### 1. Installation
-```powershell
+## 🏗 System Architecture
+*   **Backend**: Python 3.12 with `threading` for concurrent scanning.
+*   **Security**: Strict environment isolation via `python-dotenv` and protected campaign data via `.gitignore`.
+*   **Persistence**: `screen`-ready for 24/7 execution in cloud environments.
+
+## 🚦 Quick Start Guide
+
+### 1. Prerequisites
+- Python 3.12+
+- Gmail accounts with **App Passwords** enabled.
+- IMAP access enabled in your email settings.
+
+### 2. Installation
+```bash
+# Clone the repository
+git clone https://github.com/selvaggiesteban/e-mail_marketing.git
+cd e-mail_marketing
+
+# Install dependencies
 pip install python-dotenv fpdf
 ```
 
-### 2. Configuration
-Create a `.env` file based on the provided example. Add your Gmail accounts using **App Passwords** (Ensure IMAP is enabled in your Gmail settings).
-
-### 3. Execution
-The system will run a mandatory test phase before starting the full campaign. After the sending phase, it will automatically scan all inboxes for bounces.
-```powershell
-python e-mail_marketing.py
+### 3. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+CAMPAIGN_ID=CMP-2026
+SUBJECT=Business Proposition
+CONTACT_LIST=campaigns/e-mail/date/emails.txt
+MESSAGE=campaigns/e-mail/date/message.md
+SMTP_ACCOUNTS=email1@gmail.com|pass,email2@gmail.com|pass
 ```
 
-## 📊 Campaign Artifacts
-After every campaign, the system organizes data into:
-*   **Reports**: Visual PDFs and detailed JSON logs with specialized "Bounce" metrics.
-*   **Logs**: Real-time console output showing connection status and scanning progress.
+### 4. Deployment (Local or VPS)
+- **Local**: `python e-mail_marketing.py`
+- **VPS**: Use the `vps_gateway.ps1` or run via `screen` for persistent delivery.
+
+## 📊 Directory Structure
+```text
+.
+├── e-mail_marketing.py   # Main engine
+├── vps_gateway.ps1       # VPS Automation tool
+├── .env                  # Secret configuration
+└── campaigns/            # Encapsulated campaign data
+    ├── contacts/         # Database and HTML contact lists
+    └── e-mail/           # Segmented daily campaigns & logs
+```
 
 ---
-*Developed by Esteban Selvaggi | [selvaggiesteban.dev](https://selvaggiesteban.dev/)*
+**Developed with precision by Esteban Selvaggi**  
+🌐 [selvaggiesteban.dev](https://selvaggiesteban.dev/) | 📧 [hola@selvaggiesteban.dev](mailto:hola@selvaggiesteban.dev)
